@@ -173,13 +173,13 @@ contract AgeVerificationContract {
     /**
      * @dev ユーザーの年齢確認状態を取得
      * @param userAddress 確認対象ユーザーのアドレス
-     * @return isVerified: NFT保有状態
-     * @return verificationTime: 確認のタイムスタンプ
+     * @return isVerified NFT保有状態
+     * @return verificationTime 確認のタイムスタンプ
      */
-    function getUserVerificationStatus(address userAddress) 
-        public 
-        view 
-        returns (bool isVerified, uint256 verificationTime) 
+    function getUserVerificationStatus(address userAddress)
+        public
+        view
+        returns (bool isVerified, uint256 verificationTime)
     {
         isVerified = ageVerifiedNFT[userAddress];
         verificationTime = verificationTimestamp[userAddress];

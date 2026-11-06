@@ -1,0 +1,27 @@
+{
+  "name": "age-verification-deploy",
+  "version": "1.0.0",
+  "description": "Deployment scripts for AgeVerificationContract on Ethereum Sepolia",
+  "main": "hardhat.config.ts",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "verify:sepolia": "hardhat verify --network sepolia",
+    "balance": "hardhat run scripts/balance.js --network sepolia"
+  },
+  "keywords": [
+    "ethereum",
+    "hardhat",
+    "solidity"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.19.0"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.0",
+    "dotenv": "^18.0.9"
+  }
+}
