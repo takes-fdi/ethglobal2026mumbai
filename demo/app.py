@@ -366,7 +366,7 @@ def wallet_check():
         st.success("✅ ウォレットは既に存在します / Wallet already exists")
         
         # ウォレット既に存在する場合、wallet_ready画面に進む
-        if st.button("➡️ 下一步に進む / Continue", use_container_width=True, key="continue_after_wallet"):
+        if st.button("➡️ 次へ / Continue", use_container_width=True, key="continue_after_wallet"):
             st.session_state.page = "wallet_ready"
             st.rerun()
     else:
