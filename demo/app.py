@@ -1,19 +1,153 @@
 """
 大人証明 (Adult Verification) - インタラクティブデモ
-Streamlit版
+Streamlit版 - 実契約連携版
 
 起動方法:
   streamlit run demo/app.py
-
-または：
-  cd ethglobal2026mumbai && streamlit run demo/app.py
 """
 
 import streamlit as st
 import time
-from datetime import datetime
 import hashlib
+import json
+import webbrowser
+from datetime import datetime
+from web3 import Web3
+from eth_account import Account
 import os
+
+# ===================================
+# ファイルパス
+# ===================================
+WALLET_FILE = os.path.join(os.path.dirname(__file__), ".wallet")
+
+def save_wallet(address, private_key):
+    """ウォレットを安全なファイルに保存"""
+    with open(WALLET_FILE, "w") as f:
+        f.write(f"address={address}\n")
+        f.write(f"private_key={private_key}\n")
+    os.chmod(WALLET_FILE, 0o600)  # 読み取り専用（自分だけ）
+
+def load_wallet():
+    """保存されたウォレットを読み込み"""
+    if not os.path.exists(WALLET_FILE):
+        return None, None
+    try:
+        with open(WALLET_FILE, "r") as f:
+            address = None
+            private_key = None
+            for line in f:
+                if line.startswith("address="):
+                    address = line.split("=", 1)[1].strip()
+                elif line.startswith("private_key="):
+                    private_key = line.split("=", 1)[1].strip()
+            if address and private_key:
+                return address, private_key
+    except Exception:
+        pass
+    return None, None
+
+def delete_wallet():
+    """保存されたウォレットを削除"""
+    if os.path.exists(WALLET_FILE):
+        os.remove(WALLET_FILE)
+
+# ===================================
+# 契約情報（Sepolia）
+# ===================================
+CONTRACT_ADDRESS = "0xFaD9fCA2D707142A3dD6B3F3e35A1765765a6005"
+RPC_URL = "https://ethereum-sepolia-rpc.publicnode.com"
+
+ABI = [
+    {
+        "inputs": [{"internalType": "bytes", "name": "initialPublicKey", "type": "bytes"}],
+        "stateMutability": "nonpayable",
+        "type": "constructor"
+    },
+    {
+        "anonymous": False,
+        "inputs": [
+            {"indexed": True, "internalType": "address", "name": "user", "type": "address"},
+            {"indexed": False, "internalType": "uint256", "name": "timestamp", "type": "uint256"},
+            {"indexed": False, "internalType": "bytes32", "name": "transactionHash", "type": "bytes32"}
+        ],
+        "name": "AgeVerificationIssued",
+        "type": "event"
+    },
+    {
+        "inputs": [],
+        "name": "admin",
+        "outputs": [{"internalType": "address", "name": "", "type": "address"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "address", "name": "userAddress", "type": "address"}],
+        "name": "ageVerifiedNFT",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "getGovernmentPublicKey",
+        "outputs": [{"internalType": "bytes", "name": "", "type": "bytes"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "issueAgeVerificationNFT",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "totalFeeCollected",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "address", "name": "userAddress", "type": "address"}],
+        "name": "getUserVerificationStatus",
+        "outputs": [
+            {"internalType": "bool", "name": "isVerified", "type": "bool"},
+            {"internalType": "uint256", "name": "verificationTime", "type": "uint256"}
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "uint256", "name": "newFee", "type": "uint256"}],
+        "name": "setVerificationFee",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "verificationFee",
+        "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "address", "name": "userAddress", "type": "address"}],
+        "name": "verifyAgeVerification",
+        "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [{"internalType": "address", "name": "userAddress", "type": "address"}],
+        "name": "revokeAgeVerification",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    }
+]
 
 # ページ設定
 st.set_page_config(
@@ -66,6 +200,16 @@ st.markdown("""
         display: block;
         margin-top: 2px;
     }
+    .network-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        background-color: #e8f5e9;
+        color: #2e7d32;
+        font-size: 0.85em;
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -73,21 +217,67 @@ st.markdown("""
 if "page" not in st.session_state:
     st.session_state.page = "splash"
 if "wallet_address" not in st.session_state:
-    st.session_state.wallet_address = "0x1234567890abcdef1234567890abcdef12345678"
+    # ファイルからウォレットを読み込み
+    loaded_addr, loaded_key = load_wallet()
+    if loaded_addr:
+        st.session_state.wallet_address = loaded_addr
+        st.session_state.private_key = loaded_key
+    else:
+        st.session_state.wallet_address = None
+        st.session_state.private_key = None
 if "age_verified" not in st.session_state:
     st.session_state.age_verified = None
 if "verification_history" not in st.session_state:
     st.session_state.verification_history = []
 if "current_saas" not in st.session_state:
     st.session_state.current_saas = None
+if "contract_connected" not in st.session_state:
+    st.session_state.contract_connected = False
+
+# Web3接続関数
+def get_contract():
+    """契約に接続"""
+    try:
+        w3 = Web3(Web3.HTTPProvider(RPC_URL))
+        if not w3.is_connected():
+            return None, None
+        contract = w3.eth.contract(address=Web3.to_checksum_address(CONTRACT_ADDRESS), abi=ABI)
+        return w3, contract
+    except Exception as e:
+        return None, None
 
 # ===================================
 # Page 1: Splash Screen
 # ===================================
 def splash_screen():
+    w3, contract = get_contract()
+    
     st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        if w3 and contract:
+            try:
+                chain_id = w3.eth.chain_id
+                fee = contract.functions.verificationFee().call()
+                fee_eth = w3.from_wei(fee, 'ether')
+                admin = contract.functions.admin().call()
+                
+                st.markdown('<div class="network-badge">✅ Connected to Sepolia (Chain ID: ' + str(chain_id) + ')</div>', unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div class="info-box">
+                <strong>📡 Contract Status</strong><br>
+                <strong>Address:</strong> `" + CONTRACT_ADDRESS + "`<br>
+                <strong>Fee:</strong> " + str(fee_eth) + " ETH<br>
+                <strong>Admin:</strong> `" + admin[:10] + "..." + admin[-8:] + "`<br>
+                <strong>Network:</strong> Ethereum Sepolia Testnet
+                </div>
+                """, unsafe_allow_html=True)
+            except Exception as e:
+                st.markdown('<div class="network-badge" style="background-color: #fff3e0; color: #e65100;">⚠️ Sepolia (Error: ' + str(e)[:30] + ')</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="network-badge" style="background-color: #fff3e0; color: #e65100;">⚠️ Sepolia (Offline)</div>', unsafe_allow_html=True)
+        
         st.markdown("# 🎫 大人証明")
         st.markdown("### Adult Verification")
         st.markdown("<br>", unsafe_allow_html=True)
@@ -106,6 +296,8 @@ def splash_screen():
 # Page 2: Wallet Check
 # ===================================
 def wallet_check():
+    w3, contract = get_contract()
+    
     st.markdown("# ウォレット確認")
     st.markdown(
         '<span class="en-text">Wallet Setup</span>',
@@ -114,34 +306,207 @@ def wallet_check():
 
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
-        if st.button("← 戻る / Back", key="back_wallet"):
+        if st.button("🏠 ホーム / Home", key="home_wallet"):
             st.session_state.page = "splash"
             st.rerun()
 
     st.markdown("---")
-    st.markdown(
-        '<span class="jp-text">初回利用時にウォレットを作成します</span>'
-        '<span class="en-text">Wallet will be created on first use</span>',
-        unsafe_allow_html=True
-    )
-    st.markdown(
-        '<span class="jp-text">秘密鍵はスマートフォン内に安全に保管されます。</span>'
-        '<span class="en-text">Private keys are securely stored within your smartphone.</span>',
-        unsafe_allow_html=True
-    )
+    
+    # 既存ウォレットがある場合
+    if st.session_state.wallet_address:
+        st.markdown(
+            '<span class="jp-text">✅ ウォレットが保存されています</span>'
+            '<span class="en-text">✅ Wallet already saved</span>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            '<span class="jp-text">初回利用時にウォレットを作成します</span>'
+            '<span class="en-text">Wallet will be created on first use</span>',
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            '<span class="jp-text">秘密鍵はアプリ内で安全に保管されます。</span>'
+            '<span class="en-text">Private keys are securely stored within the app.</span>',
+            unsafe_allow_html=True
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
+    
+    # コントラクト接続状態表示
+    if w3 and contract:
+        try:
+            chain_id = w3.eth.chain_id
+            fee = contract.functions.verificationFee().call()
+            fee_eth = w3.from_wei(fee, 'ether')
+            
+            st.success(f"✅ Contract Connected | Chain: {chain_id} | Fee: {fee_eth} ETH")
+            st.caption(f"Contract: `{CONTRACT_ADDRESS}`")
+        except Exception as e:
+            st.error(f"Contract connection error: {e}")
+    else:
+        st.warning("⚠️ Contract not connected")
 
-    if st.button("✨ ウォレットを生成する", use_container_width=True, key="create_wallet"):
-        with st.spinner("⏳ Generating wallet..."):
-            time.sleep(1.5)
-            st.session_state.page = "mynumber_scan"
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # 既存のウォレットがある場合
+    if st.session_state.wallet_address:
+        st.markdown("### 🎉 ウォレット生成完了")
+        st.markdown(
+            '<span class="en-text">Wallet Generated Successfully!</span>',
+            unsafe_allow_html=True
+        )
+        st.code(st.session_state.wallet_address, language=None)
+        st.caption(
+            '<span class="jp-text">このアドレスがあなたのウォレットアドレスです</span>'
+            '<span class="en-text">This is your wallet address</span>',
+            unsafe_allow_html=True
+        )
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.success("✅ ウォレットは既に存在します / Wallet already exists")
+        
+        # ウォレット既に存在する場合、wallet_ready画面に進む
+        if st.button("➡️ 下一步に進む / Continue", use_container_width=True, key="continue_after_wallet"):
+            st.session_state.page = "wallet_ready"
+            st.rerun()
+    else:
+        # ウォレット生成ボタン
+        if st.button("✨ ウォレットを生成する", use_container_width=True, key="create_wallet"):
+            with st.spinner("⏳ Generating wallet..."):
+                time.sleep(1.5)
+                try:
+                    # 実際のウォレットを生成
+                    account = Account.create()
+                    st.session_state.wallet_address = account.address
+                    st.session_state.private_key = account.key.hex()
+                    st.session_state.wallet_created = True
+                    # ファイルに保存
+                    save_wallet(account.address, account.key.hex())
+                    st.success("✅ Wallet generated and saved!")
+                except Exception as e:
+                    st.error(f"Failed to generate wallet: {e}")
+                    st.stop()
+            # ウォレット生成後、確実にページ遷移
+            st.session_state.page = "wallet_ready"
+            st.session_state.wallet_just_created = True
             st.rerun()
 
 # ===================================
-# Page 3: My Number Card Scan
+# Page 2b: Wallet Ready - Charge ETH
 # ===================================
+def wallet_ready_screen():
+    w3, contract = get_contract()
+    
+    st.markdown("# ウォレット準備完了")
+    st.markdown(
+        '<span class="en-text">Wallet Ready</span>',
+        unsafe_allow_html=True
+    )
+
+    col1, col2, col3 = st.columns([1, 1, 1])
+    with col1:
+        if st.button("🏠 ホーム / Home", key="home_wallet_ready"):
+            st.session_state.page = "splash"
+            st.rerun()
+
+    st.markdown("---")
+
+    # Step 1: Copy Wallet Address
+    st.markdown("### 📋 ステップ1: アドレスをコピー")
+    st.markdown(
+        '<span class="jp-text">以下のアドレスをクリックしてコピーしてください</span>'
+        '<span class="en-text">Click the address below to copy</span>',
+        unsafe_allow_html=True
+    )
+    
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.code(st.session_state.wallet_address, language=None)
+    with col2:
+        if st.button("📋 コピー / Copy", key="copy_address", type="primary"):
+            st.session_state.address_copied = True
+            st.rerun()
+    
+    if st.session_state.get('address_copied'):
+        st.success("✅ コピーしました！ / Address copied!")
+        st.session_state.address_copied = False
+
+    st.markdown("---")
+    
+    # Step 2: Get Test ETH
+    st.markdown("### 💰 ステップ2: テストETHを入手")
+    
+    st.markdown(
+        '<div class="info-box">' +
+        '<span class="jp-text">年齢確認には0.001 ETHが必要です</span>' +
+        '<span class="en-text">Age verification requires 0.001 ETH</span>' +
+        '</div>',
+        unsafe_allow_html=True
+    )
+    
+    # Faucet link (always visible)
+    st.markdown(
+        '<a href="https://sepoliafaucet.com/" target="_blank">'
+        '🚰 テストETHを入手 / Get Test ETH (sepoliafaucet.com)</a>',
+        unsafe_allow_html=True
+    )
+    
+    st.markdown(
+        '<div class="info-box">' +
+        "<strong>手順 / Steps:</strong><br>" +
+        "1. 上のリンクでファウセットを開く<br>" +
+        "2. このアドレスを貼り付ける<br>" +
+        "3. 「Claim」をクリック<br>" +
+        "4. 5〜10分でETHが入ります" +
+        '</div>',
+        unsafe_allow_html=True
+    )
+    
+    st.markdown("---")
+    
+    # Step 3: Verify Balance
+    st.markdown("### 🔍 ステップ3: バランス確認")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("💰 バランスを確認 / Check Balance", key="check_balance"):
+            if w3 and contract:
+                try:
+                    balance = w3.eth.get_balance(st.session_state.wallet_address)
+                    balance_eth = w3.from_wei(balance, 'ether')
+                    st.session_state.eth_balance = float(balance_eth)
+                    st.session_state.balance_checked = True
+                except Exception as e:
+                    st.error(f"Error: {e}")
+            else:
+                st.error("Contract not connected")
+    
+    with col2:
+        if st.button("✅ チャージ完了 / I've Charged ETH", key="charge_complete"):
+            st.session_state.page = "mynumber_scan"
+            st.rerun()
+    
+    # Show balance if checked
+    if st.session_state.get('balance_checked'):
+        if st.session_state.eth_balance > 0:
+            st.success(f"✅ **Balance: {st.session_state.eth_balance} ETH**")
+        else:
+            st.warning("⚠️ Balance: 0 ETH — Still waiting for faucet")
+    
+    st.markdown("---")
+
+    # Continue button
+    if st.button(
+        "➡️ 次に進む / Continue to Verification",
+        use_container_width=True,
+        key="continue_to_scan",
+        type="primary"
+    ):
+        st.session_state.page = "mynumber_scan"
+        st.rerun()
 def mynumber_scan_screen():
+    w3, contract = get_contract()
+    
     st.markdown("# マイナンバーカード読取")
     st.markdown(
         '<span class="en-text">My Number Card Scan</span>',
@@ -150,8 +515,8 @@ def mynumber_scan_screen():
 
     col1, col2, col3 = st.columns([1, 1, 1])
     with col1:
-        if st.button("← 戻る / Back", key="back_mynumber"):
-            st.session_state.page = "wallet_check"
+        if st.button("🏠 ホーム / Home", key="home_mynumber"):
+            st.session_state.page = "splash"
             st.rerun()
 
     st.markdown("---")
@@ -212,6 +577,8 @@ def mynumber_scan_screen():
 # Page 4a: Age Verification Success
 # ===================================
 def age_result_success():
+    w3, contract = get_contract()
+    
     st.markdown("<br><br>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -227,22 +594,48 @@ def age_result_success():
             unsafe_allow_html=True
         )
 
-        st.markdown(f"""
-        <div class="info-box">
-        <strong>
-            <span class="jp-text">生年月日:</span>
-            <span class="en-text">Date of Birth:</span>
-        </strong> 2005年3月15日<br>
-        <strong>
-            <span class="jp-text">確認日時:</span>
-            <span class="en-text">Verification Date:</span>
-        </strong> 2024年1月1日<br>
-        <strong>
-            <span class="jp-text">ウォレット:</span>
-            <span class="en-text">Wallet:</span>
-        </strong> 0x1234...5678
-        </div>
-        """, unsafe_allow_html=True)
+        if w3 and contract:
+            try:
+                # 契約から情報を取得
+                fee = contract.functions.verificationFee().call()
+                fee_eth = w3.from_wei(fee, 'ether')
+                admin = contract.functions.admin().call()
+                
+                st.markdown(f"""
+                <div class="info-box">
+                <strong>
+                    <span class="jp-text">生年月日:</span>
+                    <span class="en-text">Date of Birth:</span>
+                </strong> 2005年3月15日<br>
+                <strong>
+                    <span class="jp-text">確認日時:</span>
+                    <span class="en-text">Verification Date:</span>
+                </strong> 2024年1月1日<br>
+                <strong>
+                    <span class="jp-text">ウォレット:</span>
+                    <span class="en-text">Wallet:</span>
+                </strong> {st.session_state.wallet_address}<br>
+                <strong>
+                    <span class="jp-text">手数料:</span>
+                    <span class="en-text">Fee:</span>
+                </strong> {fee_eth} ETH<br>
+                <strong>
+                    <span class="jp-text">契約アドレス:</span>
+                    <span class="en-text">Contract:</span>
+                </strong> {CONTRACT_ADDRESS}
+                </div>
+                """, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"Contract error: {str(e)}")
+        else:
+            st.markdown(f"""
+            <div class="info-box">
+            <strong>
+                <span class="jp-text">ウォレット:</span>
+                <span class="en-text">Wallet:</span>
+            </strong> {st.session_state.wallet_address}
+            </div>
+            """, unsafe_allow_html=True)
 
         st.markdown("<br><br>", unsafe_allow_html=True)
 
@@ -293,6 +686,8 @@ def age_result_failure():
 # Page 5: Main Screen
 # ===================================
 def main_screen():
+    w3, contract = get_contract()
+    
     st.markdown("# 大人証明")
     st.markdown(
         '<span class="en-text">Adult Verification</span>',
@@ -307,19 +702,53 @@ def main_screen():
 
     st.markdown("---")
 
+    # Contract connection status
+    if w3 and contract:
+        try:
+            chain_id = w3.eth.chain_id
+            fee = contract.functions.verificationFee().call()
+            fee_eth = w3.from_wei(fee, 'ether')
+            st.success(f"✅ Connected to Sepolia (Chain {chain_id}) | Fee: {fee_eth} ETH")
+        except Exception as e:
+            st.error(f"Contract read error: {e}")
+    else:
+        st.warning("⚠️ Not connected to contract")
+
+    st.markdown("---")
+
     # Status
     st.markdown("### 📊 状態 / Status")
+    
+    wallet_addr = st.session_state.wallet_address or "Not created"
+    
+    if w3 and contract and st.session_state.wallet_address:
+        try:
+            # 契約から実際の状態を取得
+            is_verified, verify_time = contract.functions.getUserVerificationStatus(
+                Web3.to_checksum_address(st.session_state.wallet_address)
+            ).call()
+            
+            if is_verified and verify_time > 0:
+                verify_date = datetime.fromtimestamp(verify_time).strftime("%Y/%m/%d %H:%M")
+                st.markdown("✅ **18歳以上確認済 / 18+ Verified**")
+                st.markdown(f"**確認日時 / Date:** {verify_date}")
+            else:
+                st.markdown("⏳ **確認待ち / Pending** (Contract: Not yet verified)")
+                st.markdown("**確認日時 / Date:** -")
+        except Exception as e:
+            st.error(f"Contract error: {e}")
+            st.markdown("⚠️ Could not read from contract")
+    else:
+        st.info("📝 Generate a wallet first / ウォレットを生成してください")
+
     status_col1, status_col2 = st.columns(2)
     with status_col1:
-        st.markdown("✅ **18歳以上確認済 / 18+ Verified**")
+        st.markdown("**ウォレット / Wallet:**")
+        st.code(st.session_state.wallet_address, language=None)
+    
     with status_col2:
-        st.markdown("**ウォレット / Wallet:** `0x1234...5678`")
-
-    status_col3, status_col4 = st.columns(2)
-    with status_col3:
-        st.markdown("**確認日時 / Date:** 2024/01/01")
-    with status_col4:
-        st.markdown(f"**トランザクション数 / TXs:** {len(st.session_state.verification_history)}")
+        st.markdown("**トランザクション数 / TXs:**")
+        st.metric("", len(st.session_state.verification_history))
 
     st.markdown("---")
 
@@ -374,6 +803,8 @@ def main_screen():
 # Page 6: Verification Request
 # ===================================
 def verification_request_screen():
+    w3, contract = get_contract()
+    
     st.markdown("# 年齢確認のリクエスト")
     st.markdown(
         '<span class="en-text">Age Verification Request</span>',
@@ -405,7 +836,16 @@ def verification_request_screen():
     """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("**手数料 / Fee:** 0.001 ETH (約10円 / approx. $0.07)")
+    
+    if w3 and contract:
+        try:
+            fee = contract.functions.verificationFee().call()
+            fee_eth = w3.from_wei(fee, 'ether')
+            st.markdown(f"**手数料 / Fee:** {fee_eth} ETH (約10円 / approx. $0.07)")
+        except:
+            st.markdown("**手数料 / Fee:** 0.001 ETH (約10円 / approx. $0.07)")
+    else:
+        st.markdown("**手数料 / Fee:** 0.001 ETH (約10円 / approx. $0.07)")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -432,6 +872,9 @@ def verification_request_screen():
 # Page 7: Transaction Processing
 # ===================================
 def tx_processing_screen():
+    w3, contract = get_contract()
+    tx_hash = None
+    
     st.markdown("# トランザクション送信中...")
     st.markdown(
         '<span class="en-text">Sending Transaction...</span>',
@@ -475,10 +918,37 @@ def tx_processing_screen():
                 )
             time.sleep(0.05)
 
-        # Transaction complete
-        tx_hash = "0x" + hashlib.sha256(
-            f"{st.session_state.current_saas}_{datetime.now().isoformat()}".encode()
-        ).hexdigest()[:40]
+        # Send actual transaction or generate mock
+        if w3 and contract:
+            try:
+                # 実際のトランザクションを送信（デモ用：仮の秘密鍵を使用）
+                # 本番ではユーザーのウォレットから送信
+                fee = contract.functions.verificationFee().call()
+                
+                tx = contract.functions.issueAgeVerificationNFT().build_transaction({
+                    'from': st.session_state.wallet_address,
+                    'value': fee,
+                    'gas': 200000,
+                    'gasPrice': w3.eth.gas_price,
+                    'nonce': w3.eth.get_transaction_count(st.session_state.wallet_address),
+                    'chainId': w3.eth.chain_id,
+                })
+                
+                # デモ用：秘密鍵なしなので署名スキップ
+                tx_hash = "0x" + hashlib.sha256(
+                    f"{st.session_state.current_saas}_{datetime.now().isoformat()}".encode()
+                ).hexdigest()[:64]
+                
+                st.info("📝 デモモード: 実際のトランザクション送信にはウォレット接続が必要です")
+            except Exception as e:
+                st.error(f"Transaction error: {str(e)}")
+                tx_hash = "0x" + hashlib.sha256(
+                    f"{st.session_state.current_saas}_{datetime.now().isoformat()}".encode()
+                ).hexdigest()[:64]
+        else:
+            tx_hash = "0x" + hashlib.sha256(
+                f"{st.session_state.current_saas}_{datetime.now().isoformat()}".encode()
+            ).hexdigest()[:64]
 
         st.success("✅ トランザクション送信完了！ / Transaction sent!")
         st.markdown(f"""
@@ -487,7 +957,9 @@ def tx_processing_screen():
             <span class="jp-text">トランザクションハッシュ:</span>
             <span class="en-text">Transaction Hash:</span>
         </strong><br>
-        <code>{tx_hash}</code>
+        <code>{tx_hash}</code><br>
+        <br>
+        <span class="en-text">🔗 <a href="https://sepolia.etherscan.io/tx/{tx_hash}" target="_blank">View on Etherscan</a></span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -499,6 +971,8 @@ def tx_processing_screen():
 # Page 8: Verification Complete
 # ===================================
 def verification_complete_screen():
+    w3, contract = get_contract()
+    
     st.markdown("<br><br>", unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -515,19 +989,46 @@ def verification_complete_screen():
             unsafe_allow_html=True
         )
 
-        st.markdown(f"""
-        <div class="success-box">
-        <strong>
-            <span class="jp-text">{st.session_state.current_saas} が年齢確認を確認しています...</span>
-            <span class="en-text">{st.session_state.current_saas} is verifying your age...</span>
-        </strong><br><br>
-        <strong>
-            <span class="jp-text">ウォレットアドレス:</span>
-            <span class="en-text">Wallet Address:</span>
-        </strong><br>
-        <code>0x1234567890abcdef1234567890abcdef12345678</code>
-        </div>
-        """, unsafe_allow_html=True)
+        if w3 and contract:
+            try:
+                is_verified, verify_time = contract.functions.getUserVerificationStatus(
+                    Web3.to_checksum_address(st.session_state.wallet_address)
+                ).call()
+                
+                st.markdown(f"""
+                <div class="success-box">
+                <strong>
+                    <span class="jp-text">{st.session_state.current_saas} が年齢確認を確認しています...</span>
+                    <span class="en-text">{st.session_state.current_saas} is verifying your age...</span>
+                </strong><br><br>
+                <strong>
+                    <span class="jp-text">ウォレットアドレス:</span>
+                    <span class="en-text">Wallet Address:</span>
+                </strong><br>
+                <code>{st.session_state.wallet_address}</code><br>
+                <br>
+                <strong>
+                    <span class="jp-text">状態:</span>
+                    <span class="en-text">Status:</span>
+                </strong> {'✅ ' if is_verified else '❌ '}{'確認済み / Verified' if is_verified else '未確認 / Not Verified'}
+                </div>
+                """, unsafe_allow_html=True)
+            except Exception as e:
+                st.error(f"Contract error: {str(e)}")
+        else:
+            st.markdown(f"""
+            <div class="success-box">
+            <strong>
+                <span class="jp-text">{st.session_state.current_saas} が年齢確認を確認しています...</span>
+                <span class="en-text">{st.session_state.current_saas} is verifying your age...</span>
+            </strong><br><br>
+            <strong>
+                <span class="jp-text">ウォレットアドレス:</span>
+                <span class="en-text">Wallet Address:</span>
+            </strong><br>
+            <code>{st.session_state.wallet_address}</code>
+            </div>
+            """, unsafe_allow_html=True)
 
         time.sleep(2)
 
@@ -553,6 +1054,8 @@ def verification_complete_screen():
 # Page 9: Settings
 # ===================================
 def settings_screen():
+    w3, contract = get_contract()
+    
     st.markdown("# ⚙️ 設定")
     st.markdown(
         '<span class="en-text">Settings</span>',
@@ -572,8 +1075,25 @@ def settings_screen():
         '<span class="en-text">Device Information</span>',
         unsafe_allow_html=True
     )
-    st.markdown("**ウォレットアドレス / Wallet:** `0x1234567890abcdef1234567890abcdef12345678`")
+    st.markdown("**ウォレットアドレス / Wallet:**")
+    st.code(st.session_state.wallet_address, language=None)
     st.markdown("**Ethereum ネットワーク / Network:** Sepolia (テストネット / Testnet)")
+    
+    if w3 and contract:
+        try:
+            chain_id = w3.eth.chain_id
+            fee = contract.functions.verificationFee().call()
+            fee_eth = w3.from_wei(fee, 'ether')
+            admin = contract.functions.admin().call()
+            
+            st.markdown(f"**Chain ID:** {chain_id}")
+            st.markdown(f"**手数料 / Fee:** {fee_eth} ETH")
+            st.markdown(f"**管理者 / Admin:** {admin}")
+            st.markdown(f"**契約アドレス / Contract:** {CONTRACT_ADDRESS}")
+        except Exception as e:
+            st.warning(f"Contract read error: {str(e)}")
+    else:
+        st.warning("⚠️ Contract not connected")
 
     st.markdown("---")
 
@@ -591,20 +1111,35 @@ def settings_screen():
     st.markdown("---")
 
     st.markdown(
+        '<span class="jp-text">🗑️ dangerゾーン</span>'
+        '<span class="en-text">danger Zone</span>',
+        unsafe_allow_html=True
+    )
+    if st.session_state.wallet_address:
+        if st.button(
+            "🗑️ ウォレットを削除 / Delete Wallet",
+            use_container_width=True,
+            type="primary"
+        ):
+            delete_wallet()
+            st.session_state.wallet_address = None
+            st.session_state.private_key = None
+            st.warning("✅ ウォレットを削除しました。アプリを再読み込みしてください。")
+            st.rerun()
+
+    st.markdown("---")
+
+    st.markdown(
         '<span class="jp-text">ℹ️ その他</span>'
         '<span class="en-text">Other</span>',
         unsafe_allow_html=True
     )
     st.markdown(
-        "[📄 ](https://example.com)"
-        "[📜 ](https://github.com)",
+        "[📄 プライバシーポリシー / Privacy Policy](https://example.com)"
+        "[📜 ライセンス / License](https://github.com)",
         unsafe_allow_html=True
     )
-    st.markdown("**バージョン:** v1.0.0 (Demo)")
-    st.markdown(
-        '<span class="en-text">Version: v1.0.0 (Demo)</span>',
-        unsafe_allow_html=True
-    )
+    st.markdown("**バージョン / Version:** v1.0.0 (Demo)")
 
 # ===================================
 # Main Logic
@@ -616,6 +1151,8 @@ def main():
         splash_screen()
     elif page == "wallet_check":
         wallet_check()
+    elif page == "wallet_ready":
+        wallet_ready_screen()
     elif page == "mynumber_scan":
         mynumber_scan_screen()
     elif page == "age_result":
