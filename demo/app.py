@@ -520,58 +520,86 @@ def mynumber_scan_screen():
             st.rerun()
 
     st.markdown("---")
+    
     st.markdown(
-        '<span class="jp-text">📱 NFC読取中...</span>'
-        '<span class="en-text">📱 Reading via NFC...</span>',
-        unsafe_allow_html=True
-    )
-    st.markdown("")
-    st.markdown(
-        '<span class="jp-text">スマートフォンの上部をマイナンバーカードにかざしてください</span>'
-        '<span class="en-text">Hold your smartphone top to the My Number Card</span>',
+        '<span class="jp-text">📱 スマートフォンの上部をマイナンバーカードにかざして、下のボタンをクリック</span>'
+        '<span class="en-text">Hold your smartphone top to the My Number Card, then click the button below</span>',
         unsafe_allow_html=True
     )
 
     st.markdown("<br><br>", unsafe_allow_html=True)
 
-    # Progress bar
-    progress_bar = st.progress(0)
-    status_text = st.empty()
+    # Two buttons side by side
+    col_scan1, col_scan2 = st.columns(2)
+    
+    with col_scan1:
+        # Real scan button (for NFC hardware)
+        st.button(
+            "📲 NFCスキャン開始\n(ハードウェア必要)",
+            use_container_width=True,
+            type="primary",
+            key="start_mynumber_scan",
+            disabled=True
+        )
+        st.caption("💡 デモ版では下のエミュレートボタンを使用してください")
+    
+    with col_scan2:
+        # Emulate scan button (for demo)
+        if st.button(
+            "🖥️ エミュレートスキャン\nEmulate Scan",
+            use_container_width=True,
+            type="primary",
+            key="emulate_mynumber_scan"
+        ):
+            # Simulated birth date (1990-01-01 = 36 years old)
+            simulated_birthdate = "1990-01-01"
+            simulated_name = "Test User"
+            
+            # Progress bar
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
+            st.markdown("---")
+            st.success(f"✅ **エミュレート開始 / Emulate Start**")
+            st.caption(f"📅 生年月日: {simulated_birthdate} | 📝 氏名: {simulated_name}")
+            st.markdown("")
 
-    for i in range(101):
-        progress_bar.progress(i)
-        if i < 30:
+            for i in range(101):
+                progress_bar.progress(i)
+                if i < 30:
+                    status_text.markdown(
+                        '<span class="jp-text">🔷 カード情報読取中...</span>'
+                        '<span class="en-text">🔷 Reading card data...</span>',
+                        unsafe_allow_html=True
+                    )
+                elif i < 60:
+                    status_text.markdown(
+                        '<span class="jp-text">🔷 生年月日検証中...</span>'
+                        '<span class="en-text">🔷 Verifying birth date...</span>',
+                        unsafe_allow_html=True
+                    )
+                else:
+                    status_text.markdown(
+                        '<span class="jp-text">🔷 署名検証中...</span>'
+                        '<span class="en-text">🔷 Verifying signature...</span>',
+                        unsafe_allow_html=True
+                    )
+                time.sleep(0.03)
+
+            # Scan complete
             status_text.markdown(
-                '<span class="jp-text">🔷 接触待機中...</span>'
-                '<span class="en-text">🔷 Awaiting contact...</span>',
+                '<span class="jp-text">✅ エミュレーション読取完了</span>'
+                '<span class="en-text">✅ Emulation complete</span>',
                 unsafe_allow_html=True
             )
-        elif i < 60:
-            status_text.markdown(
-                '<span class="jp-text">🔷 データ読込中...</span>'
-                '<span class="en-text">🔷 Reading data...</span>',
-                unsafe_allow_html=True
-            )
-        else:
-            status_text.markdown(
-                '<span class="jp-text">🔷 署名検証中...</span>'
-                '<span class="en-text">🔷 Verifying signature...</span>',
-                unsafe_allow_html=True
-            )
-        time.sleep(0.03)
+            st.success(f"✅ **生年月日: {simulated_birthdate} (36歳) / Age: 36 years old**")
+            time.sleep(0.5)
 
-    # Scan complete
-    status_text.markdown(
-        '<span class="jp-text">✅ 読取完了</span>'
-        '<span class="en-text">✅ Scan complete</span>',
-        unsafe_allow_html=True
-    )
-    time.sleep(0.5)
-
-    # Set verified (first time always succeeds)
-    st.session_state.age_verified = True
-    st.session_state.page = "age_result"
-    st.rerun()
+            # Set verified (first time always succeeds)
+            st.session_state.age_verified = True
+            st.session_state.simulated_birthdate = simulated_birthdate
+            st.session_state.page = "age_result"
+            st.rerun()
 
 # ===================================
 # Page 4a: Age Verification Success
@@ -594,6 +622,9 @@ def age_result_success():
             unsafe_allow_html=True
         )
 
+        # Simulated birth date from emulation
+        birthdate = st.session_state.get('simulated_birthdate', '1990-01-01')
+        
         if w3 and contract:
             try:
                 # 契約から情報を取得
@@ -601,16 +632,21 @@ def age_result_success():
                 fee_eth = w3.from_wei(fee, 'ether')
                 admin = contract.functions.admin().call()
                 
+                # Calculate age from birthdate
+                from datetime import datetime
+                birth_dt = datetime.strptime(birthdate, "%Y-%m-%d")
+                age = (datetime.now() - birth_dt).days // 365
+                
                 st.markdown(f"""
                 <div class="info-box">
                 <strong>
                     <span class="jp-text">生年月日:</span>
                     <span class="en-text">Date of Birth:</span>
-                </strong> 2005年3月15日<br>
+                </strong> {birthdate} ({age}歳)<br>
                 <strong>
                     <span class="jp-text">確認日時:</span>
                     <span class="en-text">Verification Date:</span>
-                </strong> 2024年1月1日<br>
+                </strong> {datetime.now().strftime("%Y/%m/%d %H:%M")}<br>
                 <strong>
                     <span class="jp-text">ウォレット:</span>
                     <span class="en-text">Wallet:</span>
