@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎫 大人証明 - Adult Verification | 英語・日本語 併記プレゼンテーション</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .presentation-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1000px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .slide {
+            display: none;
+            padding: 50px 45px;
+            min-height: 600px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .slide h1 {
+            font-size: 2.8em;
+            color: #667eea;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .slide h1 .en {
+            font-size: 0.65em;
+            color: #764ba2;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .slide h2 {
+            font-size: 2em;
+            color: #764ba2;
+            margin-bottom: 25px;
+        }
+
+        .slide h2 .en {
+            font-size: 0.6em;
+            color: #999;
+            font-weight: normal;
+            display: block;
+            margin-top: 3px;
+        }
+
+        .slide p {
+            font-size: 1.15em;
+            line-height: 1.8;
+            color: #333;
+            margin-bottom: 12px;
+        }
+
+        .slide .jp-text {
+            font-weight: 500;
+        }
+
+        .slide .en-text {
+            font-size: 0.9em;
+            color: #666;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .slide ul {
+            margin-left: 40px;
+            font-size: 1.05em;
+            line-height: 2;
+            color: #333;
+        }
+
+        .slide li {
+            margin-bottom: 10px;
+        }
+
+        .slide li .en-text {
+            font-size: 0.88em;
+            color: #666;
+            margin-top: 1px;
+        }
+
+        .highlight {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 45px;
+            background: #f0f0f0;
+        }
+
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #764ba2;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .slide-info {
+            text-align: center;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e0e0e0;
+            position: relative;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
+
+        .slide-title {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin: 25px 0;
+        }
+
+        .comparison-item {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .comparison-item h3 {
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 1.3em;
+        }
+
+        .comparison-item h3 .en {
+            font-size: 0.75em;
+            color: #999;
+            font-weight: normal;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .comparison-item p {
+            font-size: 0.95em;
+            margin-bottom: 5px;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .timeline-item {
+            margin-bottom: 18px;
+            padding-left: 30px;
+            position: relative;
+            line-height: 1.7;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -45px;
+            top: 8px;
+            width: 12px;
+            height: 12px;
+            background: #667eea;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px #667eea;
+        }
+
+        .timeline-item .en-text {
+            font-size: 0.88em;
+            color: #666;
+            margin-top: 1px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+            margin-top: 25px;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 18px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-number {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            color: #666;
+            margin-top: 10px;
+        }
+
+        .stat-box strong {
+            font-size: 1.15em;
+            display: block;
+        }
+
+        .stat-box strong .en {
+            font-size: 0.7em;
+            color: #999;
+            font-weight: normal;
+            display: block;
+            margin-top: 2px;
+        }
+
+        .stat-box p {
+            font-size: 0.9em;
+        }
+
+        .stat-box p .en-text {
+            font-size: 0.88em;
+            color: #666;
+            margin-top: 1px;
+        }
+
+        @media (max-width: 768px) {
+            .slide {
+                padding: 30px 20px;
+                min-height: auto;
+            }
+
+            .slide h1 {
+                font-size: 2em;
+            }
+
+            .slide h2 {
+                font-size: 1.5em;
+            }
+
+            .slide p {
+                font-size: 1em;
+            }
+
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .controls {
+                padding: 15px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="icon">🎫</div>
+            <h1>
+                大人証明
+                <span class="en">Adult Verification</span>
+            </h1>
+            <p style="text-align: center; margin-top: 40px; font-size: 1.25em;">
+                <span class="jp-text">プライバシーを守りながら</span>
+                <span class="en-text">Privacy-preserving</span><br>
+                <span class="jp-text">安全に年齢確認する</span>
+                <span class="en-text">secure age verification</span><br>
+                <span class="highlight">
+                    <span class="jp-text">ブロックチェーンベースのシステム</span>
+                    <span class="en-text">Blockchain-based system</span>
+                </span>
+            </p>
+        </div>
+
+        <!-- Slide 2: Problem -->
+        <div class="slide">
+            <h2>
+                🤔 なぜ必要か？
+                <span class="en">Why is this needed?</span>
+            </h2>
+            <ul>
+                <li>
+                    <strong>
+                        <span class="jp-text">Netflix, Hulu, Amazon Prime などのストリーミングサービス</span>
+                        <span class="en-text">Streaming services (Netflix, Hulu, Amazon Prime)</span>
+                    </strong>
+                </li>
+                <li>
+                    <strong>
+                        <span class="jp-text">オンラインゲーム</span>
+                        <span class="en-text">Online games</span>
+                    </strong>
+                    <span class="en-text">(18+ content)</span>
+                </li>
+                <li>
+                    <strong>
+                        <span class="jp-text">酒・タバコ通販</span>
+                        <span class="en-text">Alcohol & tobacco online stores</span>
+                    </strong>
+                </li>
+                <li>
+                    <strong>
+                        <span class="jp-text">アダルトサイト</span>
+                        <span class="en-text">Adult websites</span>
+                    </strong>
+                </li>
+            </ul>
+            <p style="margin-top: 45px; color: #764ba2; font-weight: bold;">
+                <span class="jp-text">➜ ユーザーの年齢確認が必要だが、個人情報は最小限にしたい</span>
+                <span class="en-text">➜ Age verification is required, but user personal information should be minimized</span>
+            </p>
+        </div>
+
+        <!-- Slide 3: Solution -->
+        <div class="slide">
+            <h2>
+                ✨ 3つのコンポーネント
+                <span class="en">Three Components</span>
+            </h2>
+            <div class="comparison">
+                <div class="comparison-item">
+                    <div style="font-size: 2em; margin-bottom: 10px;">📱</div>
+                    <h3>
+                        大人証明アプリ
+                        <span class="en">Adult Verification App</span>
+                    </h3>
+                    <p>
+                        <span class="jp-text">ユーザーのスマートフォンにインストール。マイナンバーカードを読取。</span>
+                        <span class="en-text">Installed on user's smartphone. Reads My Number Card (Japanese ID).</span>
+                    </p>
+                </div>
+                <div class="comparison-item">
+                    <div style="font-size: 2em; margin-bottom: 10px;">🔐</div>
+                    <h3>
+                        スマートコントラクト
+                        <span class="en">Smart Contract</span>
+                    </h3>
+                    <p>
+                        <span class="jp-text">Ethereum上に実装。年齢確認済みのNFTを発行・管理。</span>
+                        <span class="en-text">Deployed on Ethereum. Issues and manages age-verified NFTs.</span>
+                    </p>
+                </div>
+                <div class="comparison-item">
+                    <div style="font-size: 2em; margin-bottom: 10px;">💼</div>
+                    <h3>
+                        SaaS企業
+                        <span class="en">SaaS Companies</span>
+                    </h3>
+                    <p>
+                        <span class="jp-text">NFT保有を確認するだけ。個人情報は不要。</span>
+                        <span class="en-text">Simply verify NFT ownership. No personal information needed.</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: User Flow -->
+        <div class="slide">
+            <h2>
+                🚀 ユーザーフロー
+                <span class="en">User Flow</span>
+            </h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <strong>
+                        <span class="jp-text">ステップ1:</span>
+                        <span class="en-text">Step 1:</span>
+                    </strong>
+                    <span class="jp-text">アプリをインストール</span>
+                    <span class="en-text">Install the app</span>
+                </div>
+                <div class="timeline-item">
+                    <strong>
+                        <span class="jp-text">ステップ2:</span>
+                        <span class="en-text">Step 2:</span>
+                    </strong>
+                    <span class="jp-text">マイナンバーカードをスマートフォンにかざす</span>
+                    <span class="en-text">Tap My Number Card against smartphone</span>
+                </div>
+                <div class="timeline-item">
+                    <strong>
+                        <span class="jp-text">ステップ3:</span>
+                        <span class="en-text">Step 3:</span>
+                    </strong>
+                    <span class="jp-text">政府公開鍵で署名を検証</span>
+                    <span class="en-text">Verify signature with government public key</span>
+                </div>
+                <div class="timeline-item">
+                    <strong>
+                        <span class="jp-text">ステップ4:</span>
+                        <span class="en-text">Step 4:</span>
+                    </strong>
+                    <span class="jp-text">18歳以上/未満を判定・保存</span>
+                    <span class="en-text">Determine if 18+ or underage & store result</span>
+                </div>
+                <div class="timeline-item">
+                    <strong>
+                        <span class="jp-text">ステップ5:</span>
+                        <span class="en-text">Step 5:</span>
+                    </strong>
+                    <span class="jp-text">Netflix などで年齢確認</span>
+                    <span class="en-text">Use age verification on Netflix, etc.</span>
+                </div>
+                <div class="timeline-item">
+                    <strong>
+                        <span class="jp-text">ステップ6:</span>
+                        <span class="en-text">Step 6:</span>
+                    </strong>
+                    <span class="jp-text">NFTを発行（約10円）</span>
+                    <span class="en-text">Issue NFT (approx. $0.07)</span>
+                </div>
+                <div class="timeline-item">
+                    <strong>
+                        <span class="jp-text">ステップ7:</span>
+                        <span class="en-text">Step 7:</span>
+                    </strong>
+                    <span class="jp-text">SaaS企業がサービス提供開始</span>
+                    <span class="en-text">SaaS company begins service delivery</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Security -->
+        <div class="slide">
+            <h2>
+                🔒 セキュリティ
+                <span class="en">Security</span>
+            </h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div style="font-size: 2em; margin-bottom: 10px;">📱</div>
+                    <strong>
+                        <span class="jp-text">ローカル保管</span>
+                        <span class="en-text">Local Storage</span>
+                    </strong>
+                    <p>
+                        <span class="jp-text">マイナンバー情報はスマートフォンのみ</span>
+                        <span class="en-text">My Number information stored only on smartphone</span>
+                    </p>
+                </div>
+                <div class="stat-box">
+                    <div style="font-size: 2em; margin-bottom: 10px;">🔑</div>
+                    <strong>
+                        <span class="jp-text">秘密鍵保護</span>
+                        <span class="en-text">Private Key Protection</span>
+                    </strong>
+                    <p>
+                        <span class="jp-text">iOS Keychain / Android KeyStore</span>
+                        <span class="en-text">iOS Keychain / Android KeyStore</span>
+                    </p>
+                </div>
+                <div class="stat-box">
+                    <div style="font-size: 2em; margin-bottom: 10px;">⛓️</div>
+                    <strong>
+                        <span class="jp-text">改ざん不可</span>
+                        <span class="en-text">Immutable</span>
+                    </strong>
+                    <p>
+                        <span class="jp-text">ブロックチェーンに永続記録</span>
+                        <span class="en-text">Permanent record on blockchain</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: Business Model -->
+        <div class="slide">
+            <h2>
+                💰 ビジネスモデル
+                <span class="en">Business Model</span>
+            </h2>
+            <div class="comparison">
+                <div class="comparison-item">
+                    <h3>
+                        <span class="jp-text">ユーザー</span>
+                        <span class="en-text">Users</span>
+                    </h3>
+                    <p>
+                        <span class="jp-text">1回の確認:</span>
+                        <span class="en-text">Single verification:</span>
+                        <span class="highlight">
+                            <span class="jp-text">約10円</span>
+                            <span class="en-text">~$0.07</span>
+                        </span>
+                        (0.001 ETH)
+                    </p>
+                </div>
+                <div class="comparison-item">
+                    <h3>
+                        <span class="jp-text">SaaS企業</span>
+                        <span class="en-text">SaaS Companies</span>
+                    </h3>
+                    <p>
+                        <span class="jp-text">追加実装コスト:</span>
+                        <span class="en-text">Additional integration cost:</span>
+                        <span class="highlight">
+                            <span class="jp-text">ほぼ0円</span>
+                            <span class="en-text">Near zero</span>
+                        </span>
+                    </p>
+                </div>
+            </div>
+            <p style="margin-top: 45px; text-align: center;">
+                <strong>
+                    ✨
+                    <span class="jp-text">スケーラビリティ：</span>
+                    <span class="en-text">Scalability:</span>
+                </strong><br>
+                <span class="jp-text">複数のSaaS企業が同じスマートコントラクトを利用可能</span>
+                <span class="en-text">Multiple SaaS companies can use the same smart contract</span>
+            </p>
+        </div>
+
+        <!-- Slide 7: Features -->
+        <div class="slide">
+            <h2>
+                ⭐ 6つの特徴
+                <span class="en">6 Key Features</span>
+            </h2>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <strong>
+                        🔐
+                        <span class="jp-text">プライバシー</span>
+                        <span class="en-text">Privacy</span>
+                    </strong>
+                    <p>
+                        <span class="jp-text">個人情報はスマートフォンのみ</span>
+                        <span class="en-text">Personal info stays on smartphone</span>
+                    </p>
+                </div>
+                <div class="stat-box">
+                    <strong>
+                        ✅
+                        <span class="jp-text">セキュア</span>
+                        <span class="en-text">Secure</span>
+                    </strong>
+                    <p>
+                        <span class="jp-text">政府公開鍵による検証</span>
+                        <span class="en-text">Verified via government public key</span>
+                    </p>
+                </div>
+                <div class="stat-box">
+                    <strong>
+                        🈓
+                        <span class="jp-text">スケーラブル</span>
+                        <span class="en-text">Scalable</span>
+                    </strong>
+                    <p>
+                        <span class="jp-text">複数SaaS企業対応</span>
+                        <span class="en-text">Supports multiple SaaS companies</span>
+                    </p>
+                </div>
+                <div class="stat-box">
+                    <strong>
+                        💸
+                        <span class="jp-text">低コスト</span>
+                        <span class="en-text">Low Cost</span>
+                    </strong>
+                    <p>
+                        <span class="jp-text">1回わずか10円</span>
+                        <span class="en-text">Just $0.07 per verification</span>
+                    </p>
+                </div>
+                <div class="stat-box">
+                    <strong>
+                        ⚡
+                        <span class="jp-text">高速</span>
+                        <span class="en-text">Fast</span>
+                    </strong>
+                    <p>
+                        <span class="jp-text">ブロックチェーン処理</span>
+                        <span class="en-text">Blockchain-powered processing</span>
+                    </p>
+                </div>
+                <div class="stat-box">
+                    <strong>
+                        👤
+                        <span class="jp-text">シンプル</span>
+                        <span class="en-text">Simple</span>
+                    </strong>
+                    <p>
+                        <span class="jp-text">ワンタップで完了</span>
+                        <span class="en-text">Complete with one tap</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Implementation Status -->
+        <div class="slide">
+            <h2>
+                ✅ 現在の状況
+                <span class="en">Current Status</span>
+            </h2>
+            <ul style="font-size: 1.05em;">
+                <li>
+                    ✅ <span class="highlight">
+                        <span class="jp-text">仕様書・設計</span>
+                        <span class="en-text">Specifications & Design</span>
+                    </span>
+                    <span class="jp-text">- 完成</span><span class="en-text"> - Complete</span>
+                </li>
+                <li>
+                    ✅ <span class="highlight">
+                        <span class="jp-text">スマートコントラクト</span>
+                        <span class="en-text">Smart Contract</span>
+                    </span>
+                    <span class="jp-text">- Solidity実装完了</span><span class="en-text"> - Solidity implementation done</span>
+                </li>
+                <li>
+                    ✅ <span class="highlight">
+                        <span class="jp-text">デモアプリ</span>
+                        <span class="en-text">Demo App</span>
+                    </span>
+                    <span class="jp-text">- テスト100%合格</span><span class="en-text"> - 100% test pass rate</span>
+                </li>
+                <li>
+                    ✅ <span class="highlight">
+                        <span class="jp-text">UIモック</span>
+                        <span class="en-text">UI Mockups</span>
+                    </span>
+                    <span class="jp-text">- 12個の画面完成</span><span class="en-text"> - 12 screens completed</span>
+                </li>
+                <li>
+                    ⏳ <span class="highlight">
+                        <span class="jp-text">iOS・Androidアプリ</span>
+                        <span class="en-text">iOS & Android Apps</span>
+                    </span>
+                    <span class="jp-text">- 開発中</span><span class="en-text"> - In development</span>
+                </li>
+                <li>
+                    ⏳ <span class="highlight">
+                        <span class="jp-text">テストネット</span>
+                        <span class="en-text">Testnet Deployment</span>
+                    </span>
+                    <span class="jp-text">- 予定中</span><span class="en-text"> - Scheduled</span>
+                </li>
+                <li>
+                    ⏳ <span class="highlight">
+                        <span class="jp-text">正式ローンチ</span>
+                        <span class="en-text">Official Launch</span>
+                    </span>
+                    <span class="jp-text">- Q4 2024予定</span><span class="en-text"> - Q4 2024 planned</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Slide 9: Roadmap -->
+        <div class="slide">
+            <h2>
+                🗓️ ロードマップ
+                <span class="en">Roadmap</span>
+            </h2>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <strong>2024 Q4:</strong>
+                    <span class="jp-text">Ethereum Sepoliaテストネット検証</span>
+                    <span class="en-text">Ethereum Sepolia testnet verification</span>
+                </div>
+                <div class="timeline-item">
+                    <strong>2025 Q1:</strong>
+                    <span class="jp-text">ベータ版リリース・SaaS企業テスト</span>
+                    <span class="en-text">Beta release & SaaS company testing</span>
+                </div>
+                <div class="timeline-item">
+                    <strong>2025 Q2:</strong>
+                    <span class="jp-text">正式版・メインネット展開</span>
+                    <span class="en-text">Production release & mainnet deployment</span>
+                </div>
+                <div class="timeline-item">
+                    <strong>2025 Q3:</strong>
+                    <span class="jp-text">Polygon等L2対応</span>
+                    <span class="en-text">Polygon & other L2 support</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Summary -->
+        <div class="slide">
+            <div class="icon">🎉</div>
+            <h1>
+                大人証明
+                <span class="en">Adult Verification</span>
+            </h1>
+            <p style="text-align: center; margin-top: 40px; font-size: 1.15em;">
+                <strong>
+                    <span class="jp-text">プライバシーを守りながら</span>
+                    <span class="en-text">Privacy-preserving</span>
+                </strong><br>
+                <strong>
+                    <span class="jp-text">安全に年齢確認</span>
+                    <span class="en-text">Secure age verification</span>
+                </strong><br>
+                <br>
+                <span class="highlight">
+                    <span class="jp-text">SaaS企業の新しい選択肢</span>
+                    <span class="en-text">A new option for SaaS businesses</span>
+                </span>
+            </p>
+            <p style="text-align: center; margin-top: 50px; color: #666;">
+                Made with ❤️ for ETHGlobal 2026 Mumbai
+            </p>
+        </div>
+
+        <div class="controls">
+            <button id="prevBtn" onclick="changeSlide(-1)">← 前へ / Previous</button>
+            <div class="slide-info">
+                <span id="slideNumber">1</span> / <span id="totalSlides">10</span>
+            </div>
+            <button id="nextBtn" onclick="changeSlide(1)">次へ / Next →</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlide = 1;
+        const totalSlides = document.querySelectorAll('.slide').length;
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(n) {
+            const slides = document.querySelectorAll('.slide');
+
+            if (n > totalSlides) currentSlide = totalSlides;
+            if (n < 1) currentSlide = 1;
+
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[currentSlide - 1].classList.add('active');
+
+            document.getElementById('slideNumber').textContent = currentSlide;
+            document.getElementById('prevBtn').disabled = currentSlide === 1;
+            document.getElementById('nextBtn').disabled = currentSlide === totalSlides;
+
+            const progress = (currentSlide / totalSlides) * 100;
+            document.getElementById('progress').style.width = progress + '%';
+        }
+
+        function changeSlide(n) {
+            currentSlide += n;
+            showSlide(currentSlide);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') changeSlide(-1);
+            if (e.key === 'ArrowRight') changeSlide(1);
+        });
+
+        // Initialize
+        showSlide(currentSlide);
+    </script>
+</body>
+</html>
